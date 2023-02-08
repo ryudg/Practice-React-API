@@ -425,3 +425,97 @@ function User() {
 ...
 
 ```
+
+# 7. API 에 파라미터가 필요한 경우
+
+> `https://jsonplaceholder.typicode.com/users/${id}` id 값을 props 로 받아와서 API 를 요청
+
+```javascript
+// Params.js
+
+import React from "react";
+import axios from "axios";
+import useAsync from "./useAsync";
+
+async function getUser(id) {
+  const response = await axios.get(
+    `https://jsonplaceholder.typicode.com/users/${id}`
+  );
+  return response.data;
+}
+
+function Params({ id }) {
+  // useAsync 를 사용 할 때
+  // 첫번째 인자, 함수에 파라미터를 포함시켜서 함수를 호출하는 새로운 함수를 만들어서 등록
+  // 두번째 인자, id 가 바뀔 때 마다 재호출 되도록 deps 에 id 를 넣음
+  const [state] = useAsync(() => getUser(id), [id]);
+  const { loading, data: user, error } = state;
+
+  if (loading) return <div>로딩중..</div>;
+  if (error) return <div>에러가 발생했습니다</div>;
+  if (!user) return null;
+
+  return (
+    <div>
+      <h2>{user.username}</h2>
+      <p>
+        <b>Email:</b> {user.email}
+      </p>
+    </div>
+  );
+}
+
+export default Params;
+```
+
+## 7.1 Users 컴포넌트에서 상태 관리
+
+- `useState`를 사용하여 `userId`상태를 관리하기
+- 초깃값은 `null`이며, 리스트에 있는 항목을 클릭하면 클릭한 사용자의 `id`를 `userId`값으로 설정
+
+```javascript
+// App.js
+
+import React, { useState } from "react";
+import axios from "axios";
+import useAsync from "./useAsync";
+import Params from "./Params";
+
+async function getUsers() {
+  const response = await axios.get(
+    "https://jsonplaceholder.typicode.com/users"
+  );
+  return response.data;
+}
+
+function User() {
+  const [userId, setUserId] = useState(null);
+  const [state, refetch] = useAsync(getUsers, [], true);
+
+  const { loading, data: users, error } = state;
+
+  if (loading) return <div>로딩중..</div>;
+  if (error) return <div>에러가 발생했습니다</div>;
+  if (!users) return <button onClick={refetch}>불러오기</button>;
+
+  return (
+    <>
+      <ul>
+        {users.map((user) => (
+          <li
+            key={user.id}
+            onClick={() => setUserId(user.id)}
+            style={{ cursor: "pointer" }}
+          >
+            {user.username} ({user.name})
+          </li>
+        ))}
+      </ul>
+      <button onClick={refetch}>불러오기</button>
+      {userId && <Params id={userId} />}
+    </>
+  );
+}
+
+export default User;
+```
