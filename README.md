@@ -519,3 +519,225 @@ function User() {
 
 export default User;
 ```
+
+# 8. [`react-async`](https://docs.react-async.com/getting-started/installation)
+
+> **react 프로젝트 index.js 에서<React.StrictMode /> 를 제거**
+
+- 위에서 만든 Custom Hook `useAsync`와 비슷한 함수가 들어있는 라이브러리
+  (라이브러리 안에 들어있는 함수 이름도 useAsync)
+- 비동기 데이터를 가져오는 과정을 더 쉽고 깔끔하게 구성할 수 있다.
+- `useState`와 `useEffect`를 활용한 구성 보다 간편하게 구성할 수 있다.
+- 비동기 데이터 가져오기에 필요한 중복 코드를 줄일 수 있다.
+
+## 8.1 Install
+
+```bash
+> npm i react-async
+## or
+> yarn add react-async
+```
+
+## 8.2 Usage
+
+```javascript
+import { useAsync } from "react-async";
+
+// 입력 파라미터로 customerId 값을 받아 해당 customer의 정보를 fetch 하는 함수
+const loadCustomer = async ({ customerId }, { signal }) => {
+  const res = await fetch(`/api/customers/${customerId}`, { signal });
+  if (!res.ok) throw new Error(res);
+  return res.json();
+};
+
+const MyComponent = () => {
+  // useAsync hook을 사용하여
+  // (호출 할 함수 promiseFn를 통해) customerId 값이 1인 customer의 정보를 fetch
+  // 결과 값으로는 data, error, isLoading을 반환
+  const { data, error, isLoading } = useAsync({
+    promiseFn: loadCustomer,
+    customerId: 1,
+  });
+
+  // useAsync hook으로부터 받은 isLoading 값으로 로딩 중인지 여부를 판단
+  // 로딩 중이면 "Loading..."을 반환
+  if (isLoading) return "Loading...";
+  // useAsync hook으로부터 받은 error 값으로 에러 여부를 판단
+  // 에러가 있으면 "Something went wrong: ${error.message}"을 반환
+  if (error) return `Something went wrong: ${error.message}`;
+  // useAsync hook으로부터 받은 data 값으로 데이터 존재 여부를 판단
+  // 데이터가 있으면 JSON 형식으로 데이터를 표시
+  if (data)
+    return (
+      <div>
+        <strong>Loaded some data:</strong>
+        <pre>{JSON.stringify(data, null, 2)}</pre>
+      </div>
+    );
+
+  // 아무 값도 반환되지 않았을 경우 null을 반환
+  return null;
+};
+```
+
+## 8.3 Params 컴포넌트 전환
+
+- Params 컴포넌트를 `react-async` 의 `useAsync` 로 전환
+
+```javascript
+// Params.js
+
+// ----------react-async 의 useAsync----------
+import React from "react";
+import axios from "axios";
+import { useAsync } from "react-async";
+
+async function getUser(id) {
+  const response = await axios.get(
+    `https://jsonplaceholder.typicode.com/users/${id}`
+  );
+  return response.data;
+}
+
+function Params({ id }) {
+  // useAsync 를 사용할 때에는 프로미스를 반환하는 함수의 파라미터를 객체형태로
+  // ex) async function getUser({ id }) { ... }
+  // useAsync 를 사용 할 때 watch 값에 특정 값을 넣어주면 이 값이 바뀔 때마다 promiseFn 에 넣은 함수를 다시 호출해줌
+  const {
+    data: user,
+    error,
+    isLoading,
+  } = useAsync({
+    promiseFn: getUser,
+    id,
+    watch: id,
+  });
+
+  if (isLoading) return <div>로딩중..</div>;
+  if (error) return <div>에러가 발생했습니다</div>;
+  if (!user) return null;
+
+  return (
+    <div>
+      <h2>{user.username}</h2>
+      <p>
+        <b>Email:</b> {user.email}
+      </p>
+    </div>
+  );
+}
+
+export default Params;
+```
+
+## 8.4 User 컴포넌트 전환
+
+- User 컴포넌트를 `react-async` 의 `useAsync` 로 전환
+
+```javascript
+// User.js
+
+import React, { useState } from "react";
+import axios from "axios";
+import { useAsync } from "react-async";
+import Params from "./Params";
+
+async function getUsers() {
+  const response = await axios.get(
+    "https://jsonplaceholder.typicode.com/users"
+  );
+  return response.data;
+}
+
+function User() {
+  const [userId, setUserId] = useState(null);
+  const {
+    data: users,
+    error,
+    isLoading,
+    reload,
+  } = useAsync({
+    promiseFn: getUsers,
+  });
+
+  if (isLoading) return <div>로딩중..</div>;
+  if (error) return <div>에러가 발생했습니다</div>;
+  if (!users) return <button onClick={reload}>불러오기</button>;
+
+  return (
+    <>
+      <ul>
+        {users.map((user) => (
+          <li
+            key={user.id}
+            onClick={() => setUserId(user.id)}
+            style={{ cursor: "pointer" }}
+          >
+            {user.username} ({user.name})
+          </li>
+        ))}
+      </ul>
+      <button onClick={reload}>다시 불러오기</button>
+      {userId && <Params id={userId} />}
+    </>
+  );
+}
+
+export default User;
+```
+
+- 컴포넌트를 렌더링하는 시점부터 데이터를 불러옴
+  - `skip`처럼, 렌더링하는 시점이 아닌 사용자의 특정 인터랙션에 따라 API 를 호출하고 싶을 땐
+  - `promiseFn`대신 `deferFn`을 사용하고, `reload`대신 `run`함수를 사용
+
+```javascript
+// User.js
+
+import React, { useState } from "react";
+import axios from "axios";
+import { useAsync } from "react-async";
+import Params from "./Params";
+
+async function getUsers() {
+  const response = await axios.get(
+    "https://jsonplaceholder.typicode.com/users"
+  );
+  return response.data;
+}
+
+function User() {
+  const [userId, setUserId] = useState(null);
+  const {
+    data: users,
+    error,
+    isLoading,
+    run,
+  } = useAsync({
+    deferFn: getUsers,
+  });
+
+  if (isLoading) return <div>로딩중..</div>;
+  if (error) return <div>에러가 발생했습니다</div>;
+  if (!users) return <button onClick={run}>불러오기</button>;
+
+  return (
+    <>
+      <ul>
+        {users.map((user) => (
+          <li
+            key={user.id}
+            onClick={() => setUserId(user.id)}
+            style={{ cursor: "pointer" }}
+          >
+            {user.username} ({user.name})
+          </li>
+        ))}
+      </ul>
+      <button onClick={run}>다시 불러오기</button>
+      {userId && <Params id={userId} />}
+    </>
+  );
+}
+
+export default User;
+```
