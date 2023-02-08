@@ -40,7 +40,6 @@ axios.get("/users/1");
       age: 30,
     });
     ```
--
 
 # 2. `useState`와 `useEffect`로 data loading
 
@@ -52,6 +51,8 @@ axios.get("/users/1");
   - 에러
 
 ```javascript
+// User.js
+
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
@@ -71,7 +72,7 @@ function User() {
         // loading 상태를 true로 변경
         setLoading(true);
         const res = await axios.get(
-          "https://jsonplaceholder.typicode.com/user"
+          "https://jsonplaceholder.typicode.com/users"
         );
         setUsers(res.data); // res.data 안에 API 데이터가 있다.
       } catch (e) {
@@ -99,4 +100,49 @@ function User() {
 }
 
 export default User;
+```
+
+# 3. 버튼을 눌러서 API 재요청
+
+- 버튼을 눌러서 API를 재요청하는 기능을 구현
+  - `fetchUsers` 함수를 바깥으로 꺼내주고, 버튼을 만들어서 해당 함수를 연결
+
+```javascript
+// User.js
+
+...
+
+// 함수를 바깥으로 꺼내기
+const fetchUsers = async () => {
+  try {
+    setError(null);
+    setUsers(null);
+    setLoading(true);
+    const res = await axios.get("https://jsonplaceholder.typicode.com/users");
+    setUsers(res.data);
+  } catch (e) {
+    setError(e);
+  }
+  setLoading(false);
+};
+
+useEffect(() => {
+  fetchUsers();
+}, []);
+
+...
+
+return (
+    <>
+      <ul>
+        {/* users 배열을 렌더링 */}
+        {users.map((user) => (
+          <li key={user.id}>
+            {user.username} ({user.name})
+          </li>
+        ))}
+      </ul>
+      <button onClick={fetchUsers}>불러오기</button>
+    </>
+  );
 ```
