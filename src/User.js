@@ -49,62 +49,101 @@
 // export default User;
 
 // ----------useReducer()----------
-import React, { useReducer, useEffect } from "react";
-import axios from "axios";
+// import React, { useReducer, useEffect } from "react";
+// import axios from "axios";
 
-function reducer(state, action) {
-  switch (action.type) {
-    case "LOADING":
-      return {
-        loading: true,
-        data: null,
-        error: null,
-      };
-    case "SUCCESS":
-      return {
-        loading: false,
-        data: action.data,
-        error: null,
-      };
-    case "ERROR":
-      return {
-        loading: false,
-        data: null,
-        error: action.error,
-      };
-    default:
-      throw new Error(`Unhandled action type: ${action.type}`);
-  }
+// function reducer(state, action) {
+//   switch (action.type) {
+//     case "LOADING":
+//       return {
+//         loading: true,
+//         data: null,
+//         error: null,
+//       };
+//     case "SUCCESS":
+//       return {
+//         loading: false,
+//         data: action.data,
+//         error: null,
+//       };
+//     case "ERROR":
+//       return {
+//         loading: false,
+//         data: null,
+//         error: action.error,
+//       };
+//     default:
+//       throw new Error(`Unhandled action type: ${action.type}`);
+//   }
+// }
+
+// function User() {
+//   const [state, dispatch] = useReducer(reducer, {
+//     loading: false,
+//     data: null,
+//     error: null,
+//   });
+
+//   const fetchUsers = async () => {
+//     dispatch({ type: "LOADING" });
+//     try {
+//       const response = await axios.get(
+//         "https://jsonplaceholder.typicode.com/users"
+//       );
+//       dispatch({ type: "SUCCESS", data: response.data });
+//     } catch (e) {
+//       dispatch({ type: "ERROR", error: e });
+//     }
+//   };
+
+//   useEffect(() => {
+//     fetchUsers();
+//   }, []);
+
+//   const { loading, data: users, error } = state; // state.data 를 users 키워드로 조회
+
+//   if (loading) return <div>로딩중..</div>;
+//   if (error) return <div>에러가 발생했습니다</div>;
+//   if (!users) return null;
+
+//   return (
+//     <>
+//       <ul>
+//         {users.map((user) => (
+//           <li key={user.id}>
+//             {user.username} ({user.name})
+//           </li>
+//         ))}
+//       </ul>
+//       <button onClick={fetchUsers}>불러오기</button>
+//     </>
+//   );
+// }
+
+// export default User;
+
+// ----------useAsync() Custom Hook 적용----------
+import React from "react";
+import axios from "axios";
+import useAsync from "./useAsync";
+
+// useAsync 에서는 Promise 의 결과를 바로 data 에 담기 때문에,
+// 요청을 한 이후 response 에서 data 추출하여 반환하는 함수를 따로 만듬
+async function getUsers() {
+  const response = await axios.get(
+    "https://jsonplaceholder.typicode.com/users"
+  );
+  return response.data;
 }
 
 function User() {
-  const [state, dispatch] = useReducer(reducer, {
-    loading: false,
-    data: null,
-    error: null,
-  });
-
-  const fetchUsers = async () => {
-    dispatch({ type: "LOADING" });
-    try {
-      const response = await axios.get(
-        "https://jsonplaceholder.typicode.com/users"
-      );
-      dispatch({ type: "SUCCESS", data: response.data });
-    } catch (e) {
-      dispatch({ type: "ERROR", error: e });
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const [state, refetch] = useAsync(getUsers, [], true);
 
   const { loading, data: users, error } = state; // state.data 를 users 키워드로 조회
 
   if (loading) return <div>로딩중..</div>;
   if (error) return <div>에러가 발생했습니다</div>;
-  if (!users) return null;
+  if (!users) return <button onClick={refetch}>불러오기</button>;
 
   return (
     <>
@@ -115,7 +154,7 @@ function User() {
           </li>
         ))}
       </ul>
-      <button onClick={fetchUsers}>불러오기</button>
+      <button onClick={refetch}>불러오기</button>
     </>
   );
 }
